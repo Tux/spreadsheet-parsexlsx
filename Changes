@@ -2,9 +2,12 @@ Revision history for Spreadsheet-ParseXLSX
 
 {{$NEXT}}
 
+      - account for XLSX file with no AppName
+      - catch when styles are not found and Color cannot be extracted
+
 0.37  2026-06-16
 
-     - fixed build on open suse by adding NoLWP to XML::Twig constructor
+      - fixed build on open suse by adding NoLWP to XML::Twig constructor
 
 0.36  2025-01-24
 

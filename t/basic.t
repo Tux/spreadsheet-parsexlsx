@@ -17,8 +17,9 @@ for my $file (@inputs) {
     my $wb = Spreadsheet::ParseXLSX->new->parse($file);
     isa_ok($wb, 'Spreadsheet::ParseExcel::Workbook');
 
+    my $vsn = $wb->{Version};
+    ok($vsn, "App version defined: $vsn");
     is($wb->worksheet_count, 1);
-    # is($workbook->get_filename, $filename); # XXX
 
     my $ws = $wb->worksheet(0);
     isa_ok($ws, 'Spreadsheet::ParseExcel::Worksheet');
@@ -344,6 +345,56 @@ for my $file (@inputs) {
 
     for my $i (2..4) {
         is($ws->get_cell(5, $i), undef);
+    }
+}
+
+$filename = 't/data/TestX.xlsx';
+
+if (-s $filename) {
+    my $wb = Spreadsheet::ParseXLSX->new->parse($filename);
+    isa_ok($wb, 'Spreadsheet::ParseExcel::Workbook');
+
+    my $vsn = $wb->{Version};
+    ok($vsn, "App version defined: $vsn");
+    is($wb->worksheet_count, 1);
+
+    my $ws = $wb->worksheet(0);
+    isa_ok($ws, 'Spreadsheet::ParseExcel::Worksheet');
+    is($ws->get_name, 'Pagina1');
+    is_deeply([$ws->row_range], [0, 377]);
+    is_deeply([$ws->col_range], [0, 2]);
+
+    {
+        my $cell = $ws->get_cell(0, 0);
+        isa_ok($cell, 'Spreadsheet::ParseExcel::Cell');
+        is($cell->unformatted, "3");
+        is($cell->value, "3");
+        is($cell->type, 'Text');
+        is($cell->{Formula}, undef);
+
+        my $format = $cell->get_format;
+        isa_ok($format, 'Spreadsheet::ParseExcel::Format');
+        is($format->{AlignH}, 2);
+        is($format->{AlignV}, 0);
+        is($format->{Hidden}, 0);
+        is($format->{Indent}, undef);
+        ok(!$format->{Wrap});
+        is_deeply($format->{Fill}, [1, '#EAEA', undef]);
+        is_deeply($format->{BdrStyle}, [(2) x 4]);
+        is_deeply($format->{BdrColor}, [('#BFC0') x 4]);
+        is_deeply($format->{BdrDiag}, [0, 0, undef]);
+
+        my $font = $format->{Font};
+        isa_ok($font, 'Spreadsheet::ParseExcel::Font');
+        is($font->{Bold},           0);
+        is($font->{Color},          '#000000');
+        is($font->{Height},         '10.5');
+        is($font->{Italic},         0);
+        is($font->{Name},           'IBM Plex Sans');
+        is($font->{Strikeout},      0);
+        is($font->{Super},          0);
+        is($font->{Underline},      0);
+        is($font->{UnderlineStyle}, 0);
     }
 }
 

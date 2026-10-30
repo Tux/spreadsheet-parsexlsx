@@ -138,7 +138,8 @@ sub _parse_workbook {
   my ($properties) = $files->{workbook}->find_nodes('//s:workbookPr');
 
   if ($version) {
-    $workbook->{Version} = $version->att('appName')
+    my $an = $version->att('appName');
+    $workbook->{Version} = (defined $an ? $an : "xl")
       . (
       $version->att('lowestEdited')
       ? ('-' . $version->att('lowestEdited'))
@@ -673,9 +674,13 @@ sub _parse_themes {
   my $self = shift;
   my ($themes) = @_;
 
+  # $themes or warn "NO THEMES, please check _extract_files\n";
   return {} unless $themes;
 
-  my @color = map { $_->name eq 'drawmain:sysClr' ? $_->att('lastClr') : $_->att('val') } $themes->find_nodes('//drawmain:clrScheme/*/*');
+  # Once the scheme file in the deviating xlsx files is found and parsed, "drawmain"
+  # might be a different name, like "a" or "Office"
+  my @color = map { $_->name eq 'drawmain:sysClr' ? $_->att('lastClr') : $_->att('val') }
+      $themes->find_nodes('//drawmain:clrScheme/*/*');
 
   # this shouldn't be necessary, but the documentation is wrong here
   # see http://stackoverflow.com/questions/2760976/theme-confusion-in-spreadsheetml
@@ -866,16 +871,16 @@ sub _parse_styles {
     my $height = 0 + ($heightelem ? $heightelem->att('val') : 12);
     my $nameelem = $_->first_child('s:name');
     my $name = $nameelem ? $nameelem->att('val') : '';
-    Spreadsheet::ParseExcel::Font->new(
+    my $colorelem = $_->first_child('s:color');
+    my @fd = (
       Height => $height,
       # Attr           => $iAttr,
       # XXX not sure if there's a better way to keep the indexing stuff
       # intact rather than just going straight to #xxxxxx
       # XXX also not sure what it means for the color tag to be missing,
       # just assuming black for now
-      Color => (
-          $_->first_child('s:color')
-        ? $self->_color($workbook->{Color}, $_->first_child('s:color'))
+      Color => ($colorelem && $workbook->{Color}
+        ? $self->_color($workbook->{Color}, $colorelem)
         : '#000000'
       ),
       Super => (
@@ -909,7 +914,9 @@ sub _parse_styles {
       Italic => $_->has_child('s:i') ? 1 : 0,
       Underline => $_->has_child('s:u') ? 1 : 0,
       Strikeout => $_->has_child('s:strike') ? 1 : 0,
-    )
+    );
+
+    Spreadsheet::ParseExcel::Font->new(@fd);
   } $styles->find_nodes('//s:fonts/s:font');
 
   my @format = map {
@@ -1013,7 +1020,10 @@ sub _extract_files {
     }
   }
 
-  my %themes_xml = map { $_->att('Id') => $self->_parse_xml($zip, $get_path->($_->att('Target'))) } $wb_rels->find_nodes(qq<//packagerels:Relationship[\@Type="$type_base/theme"]>);
+  my @rel_theme = $wb_rels->find_nodes(qq<//packagerels:Relationship[\@Type="$type_base/theme"]>);
+  # <Relationship Id="rId2" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+  # @rel_theme or warn "NO THEME FILE(s) for $type_base\n"; <- Should be a test
+  my %themes_xml = map { $_->att('Id') => $self->_parse_xml($zip, $get_path->($_->att('Target'))) } @rel_theme;
 
   return {
     workbook => $wb_xml,
