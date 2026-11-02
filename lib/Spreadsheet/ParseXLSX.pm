@@ -153,6 +153,11 @@ sub _parse_workbook {
   $workbook->{FmtClass} = $formatter || Spreadsheet::ParseExcel::FmtDefault->new;
 
   my $themes = $self->_parse_themes((values %{$files->{themes}})[0]); # XXX
+  unless ($themes) {
+    $themes = { Color => [qw(
+      FFFFFF 000000 E7E6E6 44546A 4472C4 ED7D31
+      A5A5A5 FFC000 5B9BD5 70AD47 0563C1 954F72 )] };
+  }
 
   $workbook->{Color} = $themes->{Color};
 
@@ -1020,9 +1025,8 @@ sub _extract_files {
     }
   }
 
-  my @rel_theme = $wb_rels->find_nodes(qq<//packagerels:Relationship[\@Type="$type_base/theme"]>);
   # <Relationship Id="rId2" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
-  # @rel_theme or warn "NO THEME FILE(s) for $type_base\n"; <- Should be a test
+  my @rel_theme = $wb_rels->find_nodes(qq<//packagerels:Relationship[\@Type="$type_base/theme"]>);
   my %themes_xml = map { $_->att('Id') => $self->_parse_xml($zip, $get_path->($_->att('Target'))) } @rel_theme;
 
   return {
